@@ -9,10 +9,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Armazenamento das concentrações recomendadas por produto e central
 let concentracaoRecomendadaPorProdutoECentral = {
-    'soda-plataforma': { concentracao: 1.5, tempo: null },
-    'soda-silo': { concentracao: 1.5, tempo: null },
-    'acido-plataforma': { concentracao: 1.2, tempo: null },
-    'acido-silo': { concentracao: 1.8, tempo: null },
+    'soda-plataforma': { concentracao: 1.5, validade: null },
+    'soda-silo': { concentracao: 1.5, validade: null },
+    'acido-plataforma': { concentracao: 1.2, validade: null },
+    'acido-silo': { concentracao: 1.8, validade: null },
 };
 
 // Página inicial que renderiza a página de cálculo e o botão para definir nova concentração
@@ -95,7 +95,7 @@ app.get('/', (req, res) => {
                 `<div class="alert alert-success mt-3 text-center">Quantidade a dosar: ${req.query.resultado} litros</div>` : ''
             }
             ${req.query.concentracao ? 
-                `<div class="alert alert-info mt-3 text-center">Concentração recomendada: ${req.query.concentracao}%</div>` : ''
+                `<div class="alert alert-info mt-3 text-center">Concentração recomendada: ${req.query.concentracao}% até ${req.query.validade}</div>` : ''
             }
 
             <a href="/definir-concentracao" class="btn btn-warning mt-4">Definir Nova Concentração</a>
@@ -104,8 +104,6 @@ app.get('/', (req, res) => {
     </html>
     `);
 });
-
-
 
 // Rota para definir a nova concentração com tempo específico
 app.get('/definir-concentracao', (req, res) => {
@@ -176,6 +174,11 @@ app.get('/definir-concentracao', (req, res) => {
                     <input type="number" name="concentracaoRecomendada" id="concentracaoRecomendada" class="form-control" step="0.01" required>
                 </div>
 
+                <div class="form-group">
+                    <label for="validade">Data de Validade:</label>
+                    <input type="date" name="validade" id="validade" class="form-control" required>
+                </div>
+
                 <button type="submit" class="btn btn-primary">Definir</button>
             </form>
         </div>
@@ -184,24 +187,23 @@ app.get('/definir-concentracao', (req, res) => {
     `);
 });
 
-
 // Rota para processar a definição da nova concentração
 app.post('/definir-concentracao', (req, res) => {
     const novaConcentracao = parseFloat(req.body.concentracaoRecomendada);
     const tipoProduto = req.body.tipoProduto;
     const centralSelecionada = req.body.central;
-    const tempo = parseInt(req.body.tempo);
+    const validade = req.body.validade; // Captura a data de validade
 
     // Chave única para o produto e central selecionados
     const chaveProdutoECentral = `${tipoProduto}-${centralSelecionada}`;
 
-    // Ajusta a concentração e o tempo para o produto/central selecionado
+    // Ajusta a concentração e a validade para o produto/central selecionado
     concentracaoRecomendadaPorProdutoECentral[chaveProdutoECentral] = {
         concentracao: novaConcentracao,
-        tempo: tempo,
+        validade: validade, // Salva a data de validade
     };
 
-    // Exibe uma mensagem de sucesso
+    // Redireciona para a página principal
     res.redirect('/');
 });
 
@@ -222,7 +224,7 @@ app.post('/calcular', (req, res) => {
     const quantidadeNecessaria = (volumeTanque * (concentracaoUtilizada - concentracaoAtual)) / 100;
 
     // Redireciona para a página inicial com o resultado como parâmetro de query
-    res.redirect(`/?resultado=${quantidadeNecessaria.toFixed(2)}&concentracao=${concentracaoUtilizada}`);
+    res.redirect(`/?resultado=${quantidadeNecessaria.toFixed(2)}&concentracao=${concentracaoUtilizada}&validade=${concentracaoRecomendadaPorProdutoECentral[chaveProdutoECentral]?.validade || 'Sem validade'}`);
 });
 
 // Inicia o servidor na porta especificada
